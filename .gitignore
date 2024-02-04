@@ -1,0 +1,5 @@
+target/
+.example.json
+.test.sh
+venv/
+__pycache__/

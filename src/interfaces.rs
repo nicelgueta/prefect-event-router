@@ -1,0 +1,126 @@
+use std::collections::HashMap;
+use async_trait::async_trait;
+use serde::{Deserialize, Serialize};
+
+pub trait LinkedPrefectJob {
+    // returns flow_name, deployment_name
+    fn get_flow_deployment(&self) -> (String, String);
+}
+
+pub struct InputError {
+    msg: String
+}
+impl InputError {
+    pub fn new(s: &str) -> Self {
+        Self {
+            msg: String::from(s)
+        }
+    }
+    pub fn as_str(&self) -> &str {
+        return &self.msg
+    }
+}
+
+/// The Publisher trait defines the interface for different
+/// configurations used to connect to a source
+#[async_trait]
+pub trait Publisher<C> {
+    type InitObj;
+    type PubMessage: RawMessage;
+
+    /// Must be implemented to return the map of the flow actions
+    /// available to the relevant publisher. Usually implemented in the
+    /// config file as `self.message_flow_actions`
+    fn flow_action_map(&self) -> &HashMap<String, String>;
+
+    /// Default implementation for getting the name of the flow and deployment
+    /// to kick off for a given message type
+    fn get_flow_deployment(
+        &self, message_type: &str
+    ) -> Result<(String, String), InputError> {
+        let msg_typ_result = self.flow_action_map().get(message_type);
+        match msg_typ_result {
+            Some(flow_dep_str) => {
+                let split: Vec<&str> = flow_dep_str.split("/").collect();
+                if split.len() != 2 {
+                    Err(InputError::new("Flow/deployment name combo should have format: <flow name>/<deployment name>"))
+                } else {
+                    let (flow_name, deployment_name) = (split[0], split[1]);
+                    Ok((flow_name.to_string(), deployment_name.to_string()))
+                }
+            }
+            None => Err(InputError::new(&format!("No flow/deployment configured for message type {}", message_type)))
+        }
+    }
+    /// String representation of the queue-level identifer for the given config
+    /// For example for an AzureStorageQueue -> "stroage-account-name/queue"
+    fn repr(&self) -> String;
+
+    /// Returns an iterator of messages
+    async fn get_messages(&self, init_obj: &Self::InitObj) -> Vec<Self::PubMessage>;
+
+    /// creates the initialisation object that is passed to the `get_messages`
+    /// method. Can be initialised with a credential that is shared across multiple threads
+    fn init(&self, cred: Option<C>) -> Self::InitObj;
+
+    /// Mark a task as done if applicable. Just leave an empty implementation if not required
+    async fn task_done(&self, init_obj: &Self::InitObj, message: Self::PubMessage);
+
+
+}
+
+pub trait RawMessage {
+    fn get_content_str(&self) -> String;
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct QMessage {
+    message_type: String,
+    payload: Option<serde_json::Value>
+}
+impl QMessage {
+    pub fn get_flow_parameters(&self) -> &Option<serde_json::Value> {
+        &self.payload
+    }
+    pub fn typ(&self) -> &String {
+        &self.message_type
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::QMessage;
+    
+
+    #[test]
+    fn test_load_q_message() {
+        let json = r#"
+        {"message_type": "TestPubType","payload": {"test_key": "test_value"}}
+        "#;
+        let q_message: QMessage = serde_json::from_str(json).expect("Failed to load json");
+        assert_eq!(q_message.typ(), "TestPubType");
+        assert_eq!(q_message.payload.expect(
+            "Expected to find a payload as a serde json"
+        )["test_key"], "test_value")
+    }
+
+    #[test]
+    fn test_load_q_message_no_payload() {
+        let json = r#"
+        {"message_type": "TestPubType"}
+        "#;
+        let q_message: QMessage = serde_json::from_str(json).expect("Failed to load json");
+        assert_eq!(q_message.typ(), "TestPubType");
+        assert_eq!(q_message.payload, None)
+    }
+
+    #[test]
+    fn test_load_q_message_ignore_other_fields() {
+        let json = r#"
+        {"message_type": "TestPubType", "not_valid_field": 34}
+        "#;
+        // will not compile if didn't work
+        let q_message: QMessage = serde_json::from_str(json).expect("Failed to load json");
+        assert_eq!(q_message.typ(), "TestPubType");
+    }
+}

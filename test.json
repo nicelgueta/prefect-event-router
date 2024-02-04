@@ -1,0 +1,11 @@
+{
+    "threads": [
+        {
+            "publisher_type": "StdInput",
+            "message_flow_actions": {
+                "SampleMsg": "Test Flow/integration-test",
+                "ParamsMsg": "Test Flow with params/integration-test"
+            }
+        }
+    ]
+}
