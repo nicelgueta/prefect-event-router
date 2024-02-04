@@ -7,6 +7,7 @@ pub trait LinkedPrefectJob {
     fn get_flow_deployment(&self) -> (String, String);
 }
 
+#[derive(Debug)]
 pub struct InputError {
     msg: String
 }
@@ -24,8 +25,7 @@ impl InputError {
 /// The Publisher trait defines the interface for different
 /// configurations used to connect to a source
 #[async_trait]
-pub trait Publisher<C> {
-    type InitObj;
+pub trait Publisher {
     type PubMessage: RawMessage;
 
     /// Must be implemented to return the map of the flow actions
@@ -49,22 +49,22 @@ pub trait Publisher<C> {
                     Ok((flow_name.to_string(), deployment_name.to_string()))
                 }
             }
-            None => Err(InputError::new(&format!("No flow/deployment configured for message type {}", message_type)))
+            None => Err(InputError::new(&format!("No flow/deployment configured for message type `{}`", message_type)))
         }
     }
     /// String representation of the queue-level identifer for the given config
     /// For example for an AzureStorageQueue -> "stroage-account-name/queue"
     fn repr(&self) -> String;
 
-    /// Returns an iterator of messages
-    async fn get_messages(&self, init_obj: &Self::InitObj) -> Vec<Self::PubMessage>;
+    /// mathod called to initialise client connections to the source
+    /// prior to beginning the message loop
+    fn init(&mut self);
 
-    /// creates the initialisation object that is passed to the `get_messages`
-    /// method. Can be initialised with a credential that is shared across multiple threads
-    fn init(&self, cred: Option<C>) -> Self::InitObj;
+    /// Returns an iterator of messages
+    async fn get_messages(&mut self) -> Vec<Self::PubMessage>;
 
     /// Mark a task as done if applicable. Just leave an empty implementation if not required
-    async fn task_done(&self, init_obj: &Self::InitObj, message: Self::PubMessage);
+    async fn task_done(&mut self, message: Self::PubMessage);
 
 
 }

@@ -25,8 +25,7 @@ impl RawMessage for StdInMsg {
 }
 
 #[async_trait]
-impl Publisher<bool> for StdInput {
-    type InitObj = bool;
+impl Publisher for StdInput {
     type PubMessage = StdInMsg;
 
     fn flow_action_map(&self) ->  &HashMap<String,String> {
@@ -35,10 +34,9 @@ impl Publisher<bool> for StdInput {
     fn repr(&self) -> String {
         String::from("Stdin")
     }
-    fn init(&self, _cred: Option<bool>) -> bool {
-        false
-    }
-    async fn get_messages(&self, _init_obj: &Self::InitObj) -> Vec<Self::PubMessage> {
+    fn init(&mut self){}
+
+    async fn get_messages(&mut self) -> Vec<Self::PubMessage> {
         println!("Paste a message: ");
         let stdin = io::stdin();
         let mut lines = BufReader::new(stdin).lines();
@@ -46,7 +44,5 @@ impl Publisher<bool> for StdInput {
         vec.push(StdInMsg::new(lines.next_line().await.unwrap().unwrap()));
         vec
     }
-    async fn task_done(&self, _init_obj: &Self::InitObj, _message: Self::PubMessage) {
-
-    }
+    async fn task_done(&mut self, _message: Self::PubMessage) {}
 }

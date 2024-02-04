@@ -1,12 +1,16 @@
 use serde::{Deserialize, Serialize};
 
+#[cfg(feature = "azure_storage_queues")]
 mod azure_storage_queue;
+
 mod stdin;
 
 // enum to hold all the publishers that is used by serde to genrate from json
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "publisher_type")]
 pub enum PublisherType {
+
+    #[cfg(feature = "azure_storage_queues")]
     AzureStorageQueue(azure_storage_queue::AzureStorageQueue),
     StdInput(stdin::StdInput)
 }
@@ -14,11 +18,14 @@ pub enum PublisherType {
 #[cfg(test)]
 mod tests {
 
-    use super::{PublisherType, azure_storage_queue::AzureStorageQueue};
+    #[cfg(feature = "azure_storage_queues")]
+    use super::azure_storage_queue::AzureStorageQueue;
+    use super::PublisherType;
     use serde_json::json;
 
+    #[cfg(feature = "azure_storage_queues")]
     #[test]
-    fn test_load_publisher_type(){
+    fn test_load_azure_publisher_type(){
         let json_v = json!(
             {
                 "publisher_type": "AzureStorageQueue",

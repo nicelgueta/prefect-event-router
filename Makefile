@@ -30,3 +30,10 @@ run-example:
 
 test:
 	cargo test
+
+release:
+	cargo build --release
+
+make run:
+	cargo build --release
+	./target/release/prefect-event-handler test.json

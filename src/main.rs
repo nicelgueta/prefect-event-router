@@ -3,31 +3,34 @@ mod interfaces;
 mod config;
 mod publishers;
 
-use azure_identity::DefaultAzureCredential;
-use azure_storage::ErrorKind;
 use std::fs::File;
 use std::io::Read;
-use std::sync::Arc;
 use tokio::task::JoinSet;
 use publishers::PublisherType;
-use interfaces::{Publisher, QMessage, RawMessage};
+use interfaces::{Publisher, QMessage, RawMessage, InputError};
 
-async fn thread_loop<C>(
-    publisher: impl Publisher<C>,
-    credential: Option<C>,
-) -> azure_core::Result<()> {
+async fn thread_loop(
+    mut publisher: impl Publisher,
+) -> Result<(), InputError> {
     // initialise the connection
-    let loop_init = publisher.init(credential);
     let loop_name = publisher.repr();
     
     loop {
 
-        for message in publisher.get_messages(&loop_init).await {
+        for message in publisher.get_messages().await {
             println!("{}: Found message", &publisher.repr());
             let q_message: QMessage = match serde_json::from_str(&message.get_content_str()) {
                 Ok(value) => value,
                 Err(error) => {
-                    println!("{}: Unable to construct valid Qmessage from content: {:?}", &loop_name, error);
+                    let error_str = error.to_string();
+                    if error_str.contains("missing field"){
+                        println!("{}: Message does not appear to be a valid QMessage - skipping", &loop_name)
+                    } else {
+                        println!(
+                            "{}: Unable to construct valid Qmessage from content. Is likely invalid json: {:?}", 
+                            &loop_name, error
+                        );
+                    }
                     continue
                 }
             };
@@ -52,9 +55,12 @@ async fn thread_loop<C>(
                     if let Some(params) = flow_parameters {
                         println!("{}: with parameters {}", &loop_name, params)
                     }
-                    publisher.task_done(&loop_init, message).await;
+                    publisher.task_done(message).await;
                 },
-                Err(_) => panic!("{}: Failed to execute prefect deployment trigger", &loop_name)
+                Err(error) => println!(
+                    "{}: Failed to execute prefect deployment trigger. Got {:?}", 
+                    &loop_name, error
+                )
             };
         }
     }
@@ -75,37 +81,17 @@ fn config_from_str(config_str: String) -> config::ConfigFile {
 }
 
 #[tokio::main]
-async fn main() -> azure_core::Result<()> {
+async fn main() -> () {
     let args: Vec<String> = std::env::args().collect();
     if args.len() > 2 {
         println!("Must only provide 1 CLI arguments [config path]");
-        return Err(azure_core::Error::from(ErrorKind::Other));
+        return ();
     }
     let file_path = args[1].clone();
     drop(args);
     let config_str = load_config_file_str(file_path);
     let config: config::ConfigFile = config_from_str(config_str);
     
-    // to save duplication we want all threads using azure storage to 
-    // share the same auth credential contained within an arc smart pointer 
-    // so we check to see if one needs to be
-    // created that they all can share.
-    let mut uses_azure_storage = false;
-    for pt in config.iter() {
-        match pt {
-            PublisherType::AzureStorageQueue(_) => {
-                if ! uses_azure_storage {
-                    uses_azure_storage = true
-                }
-            },
-            PublisherType::StdInput(_) => ()
-        }
-    };
-    let azure_token_credential = if uses_azure_storage {
-        Some(Arc::new(DefaultAzureCredential::default()))
-    } else {
-        None
-    };
     println!("Event Handler - main | Preparing queue listener service...");
 
     // create an async thread for each queue
@@ -113,18 +99,18 @@ async fn main() -> azure_core::Result<()> {
     let config_iter = config.iter().cloned();
     for pt in config_iter {
         let pub_name = match pt {
+            #[cfg(feature = "azure_storage_queues")]
             PublisherType::AzureStorageQueue(queue_config) => {
-                let token_ptr = azure_token_credential.clone().unwrap();
                 let qc_clone = queue_config.clone();
                 spawn_set.spawn( async move{
-                    thread_loop(qc_clone, Some(token_ptr.clone())).await.unwrap();
+                    thread_loop(qc_clone).await.unwrap();
                 });
                 queue_config.repr()
             },
             PublisherType::StdInput(pub_config) => {
                 let pcc = pub_config.clone();
                 spawn_set.spawn( async move{
-                    thread_loop(pcc, None).await.unwrap();
+                    thread_loop(pcc).await.unwrap();
                 });
                 pub_config.repr()
             }
@@ -134,8 +120,8 @@ async fn main() -> azure_core::Result<()> {
     while let Some(res) = spawn_set.join_next().await {
         // let out = res.unwrap();
         res.unwrap();
-    }
-    Ok(())
+    };
+    ()
     
 }
 

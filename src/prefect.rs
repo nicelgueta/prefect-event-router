@@ -50,7 +50,7 @@ pub async fn trigger_prefect_deployment(
     flow_parameters: &Option<serde_json::Value>
 ) -> Result<String, reqwest::Error> {
     let prefect_uri = std::env::var("PREFECT_API_URI").expect(
-        "Env var PREFECT_API_URI is required"
+        "Env var PREFECT_API_URI is required for this application to run"
     );
     let token = match std::env::var("PREFECT_API_KEY") {
         Ok(v) => Some(v), Err(_) => None

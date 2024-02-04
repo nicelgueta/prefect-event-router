@@ -20,11 +20,13 @@ impl RawMessage for Message {
 pub struct AzureStorageQueue {
     pub storage_account: String,
     pub queue_name: String, 
-    pub message_flow_actions: HashMap<String, String>
+    pub message_flow_actions: HashMap<String, String>,
+
+    #[serde(skip_serializing, skip_deserializing)]
+    queue_client: Option<QueueClient>
 }
 #[async_trait]
-impl Publisher<Arc<DefaultAzureCredential>> for AzureStorageQueue {
-    type InitObj = QueueClient;
+impl Publisher for AzureStorageQueue {
     type PubMessage = Message;
 
     fn flow_action_map(&self) -> &HashMap<String, String> {
@@ -33,23 +35,30 @@ impl Publisher<Arc<DefaultAzureCredential>> for AzureStorageQueue {
     fn repr(&self) -> String {
         format!("{}/{}", &self.storage_account, &self.queue_name)
     }
-    fn init(&self, cred: Option<Arc<DefaultAzureCredential>>) -> QueueClient {
+    fn init(&mut self) {
         let account = &self.storage_account;
         let queue_name = &self.queue_name;
+        let credential = Arc::new(DefaultAzureCredential::default());
         let storage_credentials = StorageCredentials::token_credential(
-            cred.expect("Expected a DefaultAzureCredential but got None").clone()
+            credential
         );
         let queue_service = QueueServiceClient::new(account, storage_credentials);
-        queue_service.queue_client(queue_name)
-
+        let queue_client = queue_service.queue_client(queue_name);
+        self.queue_client = Some(queue_client);
     }
-    async fn get_messages(&self, init_obj: &QueueClient) -> Vec<Message> {
-        let response = init_obj.get_messages().await.unwrap();
+
+    async fn get_messages(&mut self) -> Vec<Message> {
+       
+        let response = self.queue_client.as_ref().expect(
+            "Cannot await messages without the QueueClient being initialised"
+        ).get_messages().await.unwrap();
         let raw_msgs = response.messages;
         raw_msgs
     }
-    async fn task_done(&self, init_obj: &QueueClient, message: Self::PubMessage) {
-        init_obj.pop_receipt_client(message).delete().await.expect(
+    async fn task_done(&mut self, message: Self::PubMessage) {
+        self.queue_client.as_ref().expect(
+            "Cannot call task done on a message when QueueClient not initialised"
+        ).pop_receipt_client(message).delete().await.expect(
             "Failed to mark task done"
         );
     }
