@@ -17,7 +17,7 @@ The application works by using a JSON config file for the queue-message type-flo
 
 Here's an example:
 `example-config.json`
-```json
+```js
 {
     "threads": [
         {
