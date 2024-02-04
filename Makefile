@@ -24,7 +24,7 @@ start-worker:
 	. venv/bin/activate ;\
 	prefect worker start --pool test-wp-process
 
-e2e-test:
+run-example:
 	export PREFECT_API_URI=http://127.0.0.1:4200/api ;\
 	cargo run -- test.json
 
