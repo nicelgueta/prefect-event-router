@@ -1,5 +1,5 @@
 # Rust Prefect Event Handler
-
+**in development**
 This is an asynchronous event handler written in Rust that is used to handle events that should kick-off a prefect flow. It is a simple handler that listens to some queue/socket-like source to kick off prefect flows.
 
 ## Why
