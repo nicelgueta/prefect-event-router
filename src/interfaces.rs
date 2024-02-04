@@ -58,10 +58,10 @@ pub trait Publisher {
 
     /// mathod called to initialise client connections to the source
     /// prior to beginning the message loop
-    fn init(&mut self);
+    async fn init(&mut self);
 
     /// Returns an iterator of messages
-    async fn get_messages(&mut self) -> Vec<Self::PubMessage>;
+    async fn next_message(&mut self) -> Self::PubMessage;
 
     /// Mark a task as done if applicable. Just leave an empty implementation if not required
     async fn task_done(&mut self, message: Self::PubMessage);

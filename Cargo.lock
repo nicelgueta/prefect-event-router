@@ -134,20 +134,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "azure_security_keyvault"
-version = "0.19.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9c32a5dbb8b6f67ed8b8fdc7137a912f3b6547af7f961aedb42bb553ee394f5b"
-dependencies = [
- "async-trait",
- "azure_core",
- "futures",
- "serde",
- "serde_json",
- "time",
-]
-
-[[package]]
 name = "azure_storage"
 version = "0.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1066,7 +1052,6 @@ dependencies = [
  "async-trait",
  "azure_core",
  "azure_identity",
- "azure_security_keyvault",
  "azure_storage",
  "azure_storage_queues",
  "reqwest",

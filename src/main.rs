@@ -19,56 +19,54 @@ async fn thread_loop(
 ) -> Result<(), Error> {
     // initialise the connection
     let loop_name = publisher.repr();
-    publisher.init();
+    let _ = publisher.init();
     
     loop {
-
-        for message in publisher.get_messages().await {
-            println!("{}: Found message", &publisher.repr());
-            let q_message: QMessage = match serde_json::from_str(&message.get_content_str()) {
-                Ok(value) => value,
-                Err(error) => {
-                    let error_str = error.to_string();
-                    if error_str.contains("missing field"){
-                        println!("{}: Message does not appear to be a valid QMessage - skipping", &loop_name)
-                    } else {
-                        println!(
-                            "{}: Unable to construct valid Qmessage from content. Is likely invalid json: {:?}", 
-                            &loop_name, error
-                        );
-                    }
-                    continue
+        let message = publisher.next_message().await;
+        println!("{}: Found message", &publisher.repr());
+        let q_message: QMessage = match serde_json::from_str(&message.get_content_str()) {
+            Ok(value) => value,
+            Err(error) => {
+                let error_str = error.to_string();
+                if error_str.contains("missing field"){
+                    println!("{}: Message does not appear to be a valid QMessage - skipping", &loop_name)
+                } else {
+                    println!(
+                        "{}: Unable to construct valid Qmessage from content. Is likely invalid json: {:?}", 
+                        &loop_name, error
+                    );
                 }
-            };
-            // get the message type config
-            let message_type = q_message.typ();
-            let flow_dep_result = publisher.get_flow_deployment(&message_type);
-            let (flow_name, dep_name) = match flow_dep_result {
-                Ok(value) => value,
-                Err(e) => {
-                    println!("{}: {}", &loop_name, e.to_string());
-                    continue
+                continue
+            }
+        };
+        // get the message type config
+        let message_type = q_message.typ();
+        let flow_dep_result = publisher.get_flow_deployment(&message_type);
+        let (flow_name, dep_name) = match flow_dep_result {
+            Ok(value) => value,
+            Err(inp_error) => {
+                println!("{}: {}", &loop_name, inp_error.to_string());
+                continue
+            }
+        };
+        let flow_parameters = q_message.get_flow_parameters();
+        // trigger prefect deployment
+        let trigger_result = prefect::trigger_prefect_deployment(
+            &flow_name, &dep_name, flow_parameters, &settings_ptr
+        ).await;
+        match trigger_result {
+            Ok(flow_run_name) => {
+                println!("{}: Successfully triggered {}/{}: {}", &loop_name, &flow_name, &dep_name, &flow_run_name);
+                if let Some(params) = flow_parameters {
+                    println!("{}: with parameters {}", &loop_name, params)
                 }
-            };
-            let flow_parameters = q_message.get_flow_parameters();
-            // trigger prefect deployment
-            let trigger_result = prefect::trigger_prefect_deployment(
-                &flow_name, &dep_name, flow_parameters, &settings_ptr
-            ).await;
-            match trigger_result {
-                Ok(flow_run_name) => {
-                    println!("{}: Successfully triggered {}/{}: {}", &loop_name, &flow_name, &dep_name, &flow_run_name);
-                    if let Some(params) = flow_parameters {
-                        println!("{}: with parameters {}", &loop_name, params)
-                    }
-                    publisher.task_done(message).await;
-                },
-                Err(error) => println!(
-                    "{}: Failed to execute prefect deployment trigger. Got {:?}", 
-                    &loop_name, error.to_string()
-                )
-            };
-        }
+                publisher.task_done(message).await;
+            },
+            Err(error) => println!(
+                "{}: Failed to execute prefect deployment trigger. Got {:?}", 
+                &loop_name, error
+            )
+        };
     }
 }
 

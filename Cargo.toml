@@ -9,7 +9,6 @@ edition = "2021"
 azure_storage_queues = [
     "dep:azure_core",
     "dep:azure_identity",
-    "dep:azure_security_keyvault",
     "dep:azure_storage",
     "dep:azure_storage_queues",
 ]
@@ -18,7 +17,6 @@ azure_storage_queues = [
 async-trait = "0.1.77"
 azure_core = {version = "0.19.0", optional = true}
 azure_identity = {version = "0.19.0", optional = true}
-azure_security_keyvault = {version = "0.19.0", optional = true}
 azure_storage = {version = "0.19.0", optional = true}
 azure_storage_queues = {version = "0.19.0", optional = true}
 reqwest = {version = "0.11.24", features = ["json"]}

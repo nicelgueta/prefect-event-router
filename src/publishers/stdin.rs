@@ -6,10 +6,6 @@ use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct StdInput {
-    message_flow_actions: HashMap<String, String>
-}
 pub struct StdInMsg {
     msg: String
 }
@@ -24,6 +20,11 @@ impl RawMessage for StdInMsg {
     }
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StdInput {
+    message_flow_actions: HashMap<String, String>
+}
+
 #[async_trait]
 impl Publisher for StdInput {
     type PubMessage = StdInMsg;
@@ -34,15 +35,13 @@ impl Publisher for StdInput {
     fn repr(&self) -> String {
         String::from("Stdin")
     }
-    fn init(&mut self){}
+    async fn init(&mut self){}
 
-    async fn get_messages(&mut self) -> Vec<Self::PubMessage> {
+    async fn next_message(&mut self) -> Self::PubMessage {
         println!("Paste a message: ");
         let stdin = io::stdin();
         let mut lines = BufReader::new(stdin).lines();
-        let mut vec = Vec::new();
-        vec.push(StdInMsg::new(lines.next_line().await.unwrap().unwrap()));
-        vec
+        StdInMsg::new(lines.next_line().await.unwrap().unwrap())
     }
     async fn task_done(&mut self, _message: Self::PubMessage) {}
 }

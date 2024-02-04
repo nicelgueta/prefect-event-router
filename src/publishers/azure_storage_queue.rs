@@ -23,7 +23,9 @@ pub struct AzureStorageQueue {
     pub message_flow_actions: HashMap<String, String>,
 
     #[serde(skip_serializing, skip_deserializing)]
-    queue_client: Option<QueueClient>
+    queue_client: Option<QueueClient>,
+    #[serde(skip_serializing, skip_deserializing)]
+    messages: Option<Vec<Message>>
 }
 #[async_trait]
 impl Publisher for AzureStorageQueue {
@@ -35,7 +37,7 @@ impl Publisher for AzureStorageQueue {
     fn repr(&self) -> String {
         format!("{}/{}", &self.storage_account, &self.queue_name)
     }
-    fn init(&mut self) {
+    async fn init(&mut self) {
         let account = &self.storage_account;
         let queue_name = &self.queue_name;
         let credential = Arc::new(DefaultAzureCredential::default());
@@ -44,16 +46,30 @@ impl Publisher for AzureStorageQueue {
         );
         let queue_service = QueueServiceClient::new(account, storage_credentials);
         let queue_client = queue_service.queue_client(queue_name);
+        // put first messages on internal vec
+        self.messages = Some(queue_client.get_messages().await.unwrap().messages);
         self.queue_client = Some(queue_client);
+
     }
 
-    async fn get_messages(&mut self) -> Vec<Message> {
-       
-        let response = self.queue_client.as_ref().expect(
-            "Cannot await messages without the QueueClient being initialised"
-        ).get_messages().await.unwrap();
-        let raw_msgs = response.messages;
-        raw_msgs
+    async fn next_message(&mut self) -> Message {
+        match &self.messages{
+            Some(msgs) => {
+                if msgs.len() == 0 {
+                    let response = self.queue_client.as_ref().expect(
+                        "Cannot await messages without the QueueClient being initialised"
+                    ).get_messages().await.unwrap();
+                    self.messages = Some(response.messages);
+                }
+            },
+            None => {
+                let response = self.queue_client.as_ref().expect(
+                    "Cannot await messages without the QueueClient being initialised"
+                ).get_messages().await.unwrap();
+                self.messages = Some(response.messages);
+            }
+        };
+        self.messages.as_mut().expect("Expecting a vec but got None").pop().unwrap()
     }
     async fn task_done(&mut self, message: Self::PubMessage) {
         self.queue_client.as_ref().expect(

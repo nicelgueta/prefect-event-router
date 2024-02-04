@@ -119,7 +119,7 @@ The application uses the `DefaultAzureCredential` to authenticate with Azure sto
 
 ## Main Features
 - [x] Add simple stdin example
-- [ ] Add Azure Storage Queue support
+- [x] Add Azure Storage Queue support
 - [ ] Add ØMQ support
 - [ ] Add Kafka Support
 - [ ] Add a logging system to log the messages received and the flows kicked off
