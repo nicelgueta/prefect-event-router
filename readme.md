@@ -1,5 +1,6 @@
 # Rust Prefect Event Handler
 ## !! in development !!
+
 This is an asynchronous event handler written in Rust that is used to handle events that should kick-off a prefect flow. It is a simple handler that listens to some queue/socket-like source to kick off prefect flows.
 
 ## Why
@@ -8,6 +9,8 @@ As an open source user of Prefect, there is no native support for an event-drive
 ## How it works
 The event handler is a simple tokio rust application that asynchronously listens to multiple streams and can kicks off a prefect flow depending on the type of message received to any of the target message streams.
 
+#### Architecture diagram
+![architecture](image-1.png)
 
 ## Usage
 The application works by using a JSON config file for the queue-message type-flow mapping. A config is passed to each async thread thats created to listen to a queue. 
