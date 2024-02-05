@@ -17,6 +17,6 @@
         }
     ],
     "settings": {
-        "prefect_use_msal_auth": true
+        "prefect_use_msal_auth": false
     }
 }
