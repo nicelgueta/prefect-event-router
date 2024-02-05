@@ -28,11 +28,7 @@ impl Error {
 pub trait Publisher {
     type PubMessage: RawMessage;
 
-    /// Must be implemented to return the map of the flow actions
-    /// available to the relevant publisher. Usually implemented in the
-    /// config file as `self.message_flow_actions`
-    fn flow_action_map(&self) -> &HashMap<String, String>;
-
+    
     /// Default implementation for getting the name of the flow and deployment
     /// to kick off for a given message type
     fn get_flow_deployment(
@@ -52,6 +48,12 @@ pub trait Publisher {
             None => Err(Error::InputError(format!("No flow/deployment configured for message type `{}`", message_type)))
         }
     }
+
+    /// Must be implemented to return the map of the flow actions
+    /// available to the relevant publisher. Usually implemented in the
+    /// config file as `self.message_flow_actions`
+    fn flow_action_map(&self) -> &HashMap<String, String>;
+
     /// String representation of the queue-level identifer for the given config
     /// For example for an AzureStorageQueue -> "stroage-account-name/queue"
     fn repr(&self) -> String;
@@ -61,7 +63,7 @@ pub trait Publisher {
     async fn init(&mut self);
 
     /// Returns an iterator of messages
-    async fn next_message(&mut self) -> Self::PubMessage;
+    async fn next_message(&mut self) -> Option<Self::PubMessage>;
 
     /// Mark a task as done if applicable. Just leave an empty implementation if not required
     async fn task_done(&mut self, message: Self::PubMessage);

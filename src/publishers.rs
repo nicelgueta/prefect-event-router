@@ -2,6 +2,8 @@ use serde::{Deserialize, Serialize};
 
 #[cfg(feature = "azure_storage_queues")]
 mod azure_storage_queue;
+// #[cfg(feature = "zmq")]
+mod zeromq;
 
 mod stdin;
 
@@ -12,6 +14,9 @@ pub enum PublisherType {
 
     #[cfg(feature = "azure_storage_queues")]
     AzureStorageQueue(azure_storage_queue::AzureStorageQueue),
+    // #[cfg(feature = "zmq")]
+    // Zmq(zmq::Zmq),
+
     StdInput(stdin::StdInput)
 }
 

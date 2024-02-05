@@ -52,7 +52,7 @@ impl Publisher for AzureStorageQueue {
 
     }
 
-    async fn next_message(&mut self) -> Message {
+    async fn next_message(&mut self) -> Option<Message>{
         match &self.messages{
             Some(msgs) => {
                 if msgs.len() == 0 {
@@ -69,7 +69,7 @@ impl Publisher for AzureStorageQueue {
                 self.messages = Some(response.messages);
             }
         };
-        self.messages.as_mut().expect("Expecting a vec but got None").pop().unwrap()
+        self.messages.as_mut().expect("Expecting a vec but got None").pop()
     }
     async fn task_done(&mut self, message: Self::PubMessage) {
         self.queue_client.as_ref().expect(

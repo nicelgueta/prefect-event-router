@@ -23,8 +23,11 @@ async fn thread_loop(
     
     loop {
         let message = publisher.next_message().await;
+        if let None = message {
+            continue
+        };
         println!("{}: Found message", &publisher.repr());
-        let q_message: QMessage = match serde_json::from_str(&message.get_content_str()) {
+        let q_message: QMessage = match serde_json::from_str(&message.as_ref().unwrap().get_content_str()) {
             Ok(value) => value,
             Err(error) => {
                 let error_str = error.to_string();
@@ -60,7 +63,7 @@ async fn thread_loop(
                 if let Some(params) = flow_parameters {
                     println!("{}: with parameters {}", &loop_name, params)
                 }
-                publisher.task_done(message).await;
+                publisher.task_done(message.unwrap()).await;
             },
             Err(error) => println!(
                 "{}: Failed to execute prefect deployment trigger. Got {:?}", 

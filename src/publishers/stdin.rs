@@ -37,11 +37,11 @@ impl Publisher for StdInput {
     }
     async fn init(&mut self){}
 
-    async fn next_message(&mut self) -> Self::PubMessage {
+    async fn next_message(&mut self) -> Option<Self::PubMessage> {
         println!("Paste a message: ");
         let stdin = io::stdin();
         let mut lines = BufReader::new(stdin).lines();
-        StdInMsg::new(lines.next_line().await.unwrap().unwrap())
+        Some(StdInMsg::new(lines.next_line().await.unwrap().unwrap()))
     }
     async fn task_done(&mut self, _message: Self::PubMessage) {}
 }
