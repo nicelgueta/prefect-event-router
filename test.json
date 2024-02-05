@@ -6,6 +6,17 @@
                 "SampleMsg": "Test Flow/integration-test",
                 "ParamsMsg": "Test Flow with params/integration-test"
             }
+        },
+        {
+            "publisher_type": "AzureStorageQueue",
+            "storage_account": "test-account",
+            "queue_name": "test",
+            "message_flow_actions": {
+                "TestACI": "Healthcheck/test"
+            }
         }
-    ]
+    ],
+    "settings": {
+        "prefect_use_msal_auth": true
+    }
 }

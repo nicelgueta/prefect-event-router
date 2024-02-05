@@ -1,4 +1,12 @@
 use serde::{Deserialize, Serialize};
+use crate::interfaces::Error;
+use crate::config;
+use std::sync::Arc;
+
+#[cfg(feature = "azure_storage_queues")]
+use std::ops::Deref;
+#[cfg(feature = "azure_storage_queues")]
+use crate::msal;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct Like {
@@ -19,7 +27,7 @@ struct DeploymentBody {
 async fn get_deployment_id(
     prefect_uri: &String,
     token: Option<&String>, flow_name: &String, deployment_name: &String
-) -> Result<String, reqwest::Error> {
+) -> Result<String, Error> {
     let flow_like = Like {like_:flow_name.clone()};
     let deployment_like = Like {like_:deployment_name.clone()};
     let flow_filter = Filter {name: flow_like};
@@ -35,26 +43,46 @@ async fn get_deployment_id(
     let res: serde_json::Value = req_builder
         .json(&body)
         .send()
-        .await?
+        .await.unwrap()
         .json()
-        .await?;
-    let deployment_id: String = String::from(res[0]["id"].as_str().expect(
-        "No id found in the returned deployment"
-    ));
+        .await.unwrap();
+    let deployment_id = match res[0]["id"].as_str() {
+        Some(id) => id,
+        None => return Err(
+            Error::PrefectApiError(
+                "Unable to find deployment ID for the given flow/deployment".to_string()
+            )
+        )
+    };
     Ok(deployment_id.to_string())
 }
 
+async fn get_token(settings_ptr: &Arc<config::Settings>) -> Result<Option<String>, Error> {
+    let mut token: Option<String> = None;
+
+    #[cfg(feature = "azure_storage_queues")]
+    if let Some(v) = settings_ptr.deref().prefect_use_msal_auth {
+        if v {
+            token = Some(msal::get_azure_token().await?)
+        } else {token = None}
+    };
+    if let None = token {
+        match std::env::var("PREFECT_API_KEY") {
+            Ok(v) => Some(v), Err(_) => None
+        }
+    } else {None};
+    Ok(token)
+}
 pub async fn trigger_prefect_deployment(
     flow_name: &String,
     deployment_name: &String,
-    flow_parameters: &Option<serde_json::Value>
-) -> Result<String, reqwest::Error> {
+    flow_parameters: &Option<serde_json::Value>,
+    settings_ptr: &Arc<config::Settings>
+) -> Result<String, Error> {
     let prefect_uri = std::env::var("PREFECT_API_URI").expect(
         "Env var PREFECT_API_URI is required for this application to run"
     );
-    let token = match std::env::var("PREFECT_API_KEY") {
-        Ok(v) => Some(v), Err(_) => None
-    };
+    let token = get_token(settings_ptr).await?;
     let deployment_id = get_deployment_id(
         &prefect_uri, token.as_ref(), flow_name, deployment_name
     ).await?;
@@ -71,8 +99,8 @@ pub async fn trigger_prefect_deployment(
     req_builder = req_builder.json(&body);
     let res: serde_json::Value = req_builder  
         .send()
-        .await?
-        .json().await?;
+        .await.unwrap()
+        .json().await.unwrap();
     Ok(
         String::from(
             res["name"]

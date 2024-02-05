@@ -3,17 +3,23 @@ mod interfaces;
 mod config;
 mod publishers;
 
+#[cfg(feature = "azure_storage_queues")]
+mod msal;
+
 use std::fs::File;
 use std::io::Read;
+use std::sync::Arc;
 use tokio::task::JoinSet;
 use publishers::PublisherType;
-use interfaces::{Publisher, QMessage, RawMessage, InputError};
+use interfaces::{Publisher, QMessage, RawMessage, Error};
 
 async fn thread_loop(
     mut publisher: impl Publisher,
-) -> Result<(), InputError> {
+    settings_ptr: Arc<config::Settings>,
+) -> Result<(), Error> {
     // initialise the connection
     let loop_name = publisher.repr();
+    publisher.init();
     
     loop {
 
@@ -39,15 +45,15 @@ async fn thread_loop(
             let flow_dep_result = publisher.get_flow_deployment(&message_type);
             let (flow_name, dep_name) = match flow_dep_result {
                 Ok(value) => value,
-                Err(inp_error) => {
-                    println!("{}: {}", &loop_name, inp_error.as_str());
+                Err(e) => {
+                    println!("{}: {}", &loop_name, e.to_string());
                     continue
                 }
             };
             let flow_parameters = q_message.get_flow_parameters();
             // trigger prefect deployment
             let trigger_result = prefect::trigger_prefect_deployment(
-                &flow_name, &dep_name, flow_parameters
+                &flow_name, &dep_name, flow_parameters, &settings_ptr
             ).await;
             match trigger_result {
                 Ok(flow_run_name) => {
@@ -59,7 +65,7 @@ async fn thread_loop(
                 },
                 Err(error) => println!(
                     "{}: Failed to execute prefect deployment trigger. Got {:?}", 
-                    &loop_name, error
+                    &loop_name, error.to_string()
                 )
             };
         }
@@ -76,7 +82,7 @@ fn load_config_file_str(filepath: String) -> String {
 }
 fn config_from_str(config_str: String) -> config::ConfigFile {
     serde_json::from_str(&config_str).expect(
-        "File does nto appear to be a valid config file"
+        "File does not appear to be a valid config file"
     )
 }
 
@@ -97,20 +103,23 @@ async fn main() -> () {
     // create an async thread for each queue
     let mut spawn_set = JoinSet::new();
     let config_iter = config.iter().cloned();
+    let settings_ptr = config.get_settings_ptr();
     for pt in config_iter {
         let pub_name = match pt {
             #[cfg(feature = "azure_storage_queues")]
             PublisherType::AzureStorageQueue(queue_config) => {
                 let qc_clone = queue_config.clone();
+                let settings_c = settings_ptr.clone();
                 spawn_set.spawn( async move{
-                    thread_loop(qc_clone).await.unwrap();
+                    thread_loop(qc_clone, settings_c).await.unwrap();
                 });
                 queue_config.repr()
             },
             PublisherType::StdInput(pub_config) => {
                 let pcc = pub_config.clone();
+                let settings_c = settings_ptr.clone();
                 spawn_set.spawn( async move{
-                    thread_loop(pcc).await.unwrap();
+                    thread_loop(pcc, settings_c).await.unwrap();
                 });
                 pub_config.repr()
             }

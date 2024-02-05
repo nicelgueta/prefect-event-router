@@ -8,19 +8,19 @@ pub trait LinkedPrefectJob {
 }
 
 #[derive(Debug)]
-pub struct InputError {
-    msg: String
+pub enum Error {
+    PrefectApiError(String),
+    InputError(String)
 }
-impl InputError {
-    pub fn new(s: &str) -> Self {
-        Self {
-            msg: String::from(s)
+impl Error {
+    pub fn to_string(&self) -> String {
+        match self {
+            Self::InputError(s) => format!("InputError: {}",s),
+            Self::PrefectApiError(s) => format!("PrefectApiError: {}",s)
         }
     }
-    pub fn as_str(&self) -> &str {
-        return &self.msg
-    }
 }
+
 
 /// The Publisher trait defines the interface for different
 /// configurations used to connect to a source
@@ -37,19 +37,19 @@ pub trait Publisher {
     /// to kick off for a given message type
     fn get_flow_deployment(
         &self, message_type: &str
-    ) -> Result<(String, String), InputError> {
+    ) -> Result<(String, String), Error> {
         let msg_typ_result = self.flow_action_map().get(message_type);
         match msg_typ_result {
             Some(flow_dep_str) => {
                 let split: Vec<&str> = flow_dep_str.split("/").collect();
                 if split.len() != 2 {
-                    Err(InputError::new("Flow/deployment name combo should have format: <flow name>/<deployment name>"))
+                    Err(Error::InputError("Flow/deployment name combo should have format: <flow name>/<deployment name>".to_string()))
                 } else {
                     let (flow_name, deployment_name) = (split[0], split[1]);
                     Ok((flow_name.to_string(), deployment_name.to_string()))
                 }
             }
-            None => Err(InputError::new(&format!("No flow/deployment configured for message type `{}`", message_type)))
+            None => Err(Error::InputError(format!("No flow/deployment configured for message type `{}`", message_type)))
         }
     }
     /// String representation of the queue-level identifer for the given config
