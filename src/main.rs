@@ -19,7 +19,7 @@ async fn thread_loop(
 ) -> Result<(), Error> {
     // initialise the connection
     let loop_name = publisher.repr();
-    let _ = publisher.init();
+    let _ = publisher.init().await;
     
     loop {
         let message = publisher.next_message().await;
