@@ -40,13 +40,13 @@ Here's an example:
     ]
 }
 ```
-The binary listener is then run using the following command. Each thread runs forever until a SIGKILL is sent to the main process.
+The binary listener is then run using the following command. Each thread runs forever until a SIGINT is sent to the main process.
 ```bash
 ./prefect-event-handler example-config.json
 ```
 ## Example
 
-Perhaps the best way to demonstrate how this works is to use the included example in this repo. Here we will setup a local prefect instance in a dedicated local venv, deploy twos flows and then run the `prefect-evente-handler` to receive messages from stdinput that will be used to kick off our test flows.
+Perhaps the best way to demonstrate how this works is to use the included example in this repo. Here we will setup a local prefect instance in a dedicated local venv, deploy two flows and then run the `prefect-event-router` to receive messages from stdinput that will be used to kick off our test flows.
 
 ### Setup
 >Prequisites: Cargo and Python must be installed prior to running this setup.
