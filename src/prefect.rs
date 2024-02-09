@@ -40,12 +40,18 @@ async fn get_deployment_id(
     if let Some(token_value) = token {
         req_builder = req_builder.header("Authorization", format!("Bearer {}", token_value))
     }
-    let res: serde_json::Value = req_builder
+    let json_res = req_builder
         .json(&body)
         .send()
         .await.unwrap()
         .json()
-        .await.unwrap();
+        .await;
+    let res: serde_json::Value = match json_res {
+        Ok(v) => Ok(v),
+        Err(e) => Err(Error::PrefectApiError(
+            format!("Deployment ID call does not return JSON. Got {}. Are credntials set correctly?", e.to_string())
+        ))
+    }?;
     let deployment_id = match res[0]["id"].as_str() {
         Some(id) => id,
         None => return Err(
@@ -61,16 +67,19 @@ async fn get_token(settings_ptr: &Arc<config::Settings>) -> Result<Option<String
     let mut token: Option<String> = None;
 
     #[cfg(feature = "azure_storage_queues")]
-    if let Some(v) = settings_ptr.deref().prefect_use_msal_auth {
+    if let Some(v) = settings_ptr.prefect_use_msal_auth {
         if v {
-            token = Some(msal::get_azure_token().await?)
+            let (cid, csec, ten, scop) = settings_ptr.get_azure_credentials().expect(
+                "Unable to source credentials from the shared settings"
+            );
+            token = Some(msal::get_azure_token(cid, csec, ten, scop).await?)
         } else {token = None}
     };
     if let None = token {
-        match std::env::var("PREFECT_API_KEY") {
+        token = match std::env::var("PREFECT_API_KEY") {
             Ok(v) => Some(v), Err(_) => None
         }
-    } else {None};
+    };
     Ok(token)
 }
 pub async fn trigger_prefect_deployment(

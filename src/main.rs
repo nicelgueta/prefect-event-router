@@ -97,7 +97,8 @@ async fn main() -> () {
     let file_path = args[1].clone();
     drop(args);
     let config_str = load_config_file_str(file_path);
-    let config: config::ConfigFile = config_from_str(config_str);
+    let mut config: config::ConfigFile = config_from_str(config_str);
+    let _ = config.init().await; // get env derived attrs to pass to threads
     
     println!("Event Handler - main | Preparing queue listener service...");
 

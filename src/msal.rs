@@ -36,7 +36,9 @@ fn get_key_or_value(env_var_name: &str) -> Result<(bool, String), Error> {
     }
 }
 
-pub async fn get_azure_token() -> Result<String, Error> {
+pub async fn get_token_credentials(
+    credential: &Option<Arc<DefaultAzureCredential>>
+) -> Result<(String, String, String, String), Error> {
     let vault_uri_result = std::env::var("AZURE_KEY_VAULT_URI");
     
     let (client_id_is_key, mut client_id) = get_key_or_value("PREFECT_API_CLIENT_ID")?;
@@ -46,8 +48,11 @@ pub async fn get_azure_token() -> Result<String, Error> {
     
     let secret_client_result = match vault_uri_result {
         Ok(uri) => {
-            let credential = Arc::new(DefaultAzureCredential::default());
-            Some(get_key_vault_client(credential, &uri))
+            let cred = match credential {
+                Some(c) => c.clone(),
+                None => Arc::new(DefaultAzureCredential::default())
+            };
+            Some(get_key_vault_client(cred, &uri))
         },
         Err(_) => None
     };
@@ -59,8 +64,16 @@ pub async fn get_azure_token() -> Result<String, Error> {
         if client_secret_is_key {client_secret = secret_client.get(client_secret).await.unwrap().value};
         if tenant_id_is_key {tenant_id = secret_client.get(tenant_id).await.unwrap().value};
         if scope_is_key {scope = secret_client.get(scope).await.unwrap().value};
-    }
+    };
+    Ok((client_id, client_secret, tenant_id, scope))
+}
 
+pub async fn get_azure_token(
+    client_id: &String,
+    client_secret: &String,
+    tenant_id: &String,
+    scope: &String,
+) -> Result<String, Error> {
     let http_client = azure_core::new_http_client();
 
     let token = client_credentials_flow::perform(
