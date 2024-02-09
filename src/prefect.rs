@@ -47,7 +47,7 @@ async fn get_deployment_id(
     let res: serde_json::Value = match json_res {
         Ok(v) => Ok(v),
         Err(e) => Err(Error::PrefectApiError(
-            format!("Deployment ID call does not return JSON. Got {}. Are credntials set correctly?", e.to_string())
+            format!("Deployment ID call does not return JSON. Got {}. Are credentials set correctly?", e.to_string())
         ))
     }?;
     let deployment_id = match res[0]["id"].as_str() {
