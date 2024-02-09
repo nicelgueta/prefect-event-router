@@ -44,9 +44,9 @@ mod tests {
         let azure_publisher: PublisherType = serde_json::from_value(json_v).expect(
             "Unable to parse json as a valid publisher type"
         );
-        let azure_storage_config: AzureStorageQueue = match azure_publisher {
+        let _asq: AzureStorageQueue = match azure_publisher {
             PublisherType::AzureStorageQueue(v) => v,
-            PublisherType::StdInput(v) => panic!("Not expecting stdinput type")
+            PublisherType::StdInput(_v) => panic!("Not expecting stdinput type")
         };
 
         

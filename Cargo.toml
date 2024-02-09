@@ -14,7 +14,7 @@ azure_storage_queues = [
     "dep:azure_storage_queues",
     "dep:azure_security_keyvault"
 ]
-# zmq = ["dep:tokio-zmq"]
+# zmq = ["dep:tokio-zmq"]s
 
 [dependencies]
 async-trait = "0.1.77"

@@ -4,8 +4,6 @@ use crate::config;
 use std::sync::Arc;
 
 #[cfg(feature = "azure_storage_queues")]
-use std::ops::Deref;
-#[cfg(feature = "azure_storage_queues")]
 use crate::msal;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
