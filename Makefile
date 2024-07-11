@@ -3,11 +3,11 @@ setup-prefect-test:
 	cd prefect-testing ;\
 	python -m venv venv ;\
 	. venv/bin/activate ;\
-	pip install prefect ;\
+	pip install "prefect>=2.19.0, <3.0" ;\
 	prefect --no-prompt work-pool create test-wp-process --type process ;\
-	prefect --no-prompt deploy test_flow:say_hello_goodbye \
+	prefect --no-prompt deploy test_flow.py:say_hello_goodbye \
 		--name integration-test --pool test-wp-process ;\
-	prefect --no-prompt deploy test_flow:say_name_goodbye \
+	prefect --no-prompt deploy test_flow.py:say_name_goodbye \
 		--name integration-test --pool test-wp-process
 
 reset-prefect-test:

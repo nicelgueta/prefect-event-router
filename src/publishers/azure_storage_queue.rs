@@ -20,7 +20,6 @@ impl RawMessage for Message {
 pub struct AzureStorageQueue {
     pub storage_account: String,
     pub queue_name: String, 
-    pub message_flow_actions: HashMap<String, String>,
 
     #[serde(skip_serializing, skip_deserializing)]
     queue_client: Option<QueueClient>,
@@ -31,9 +30,6 @@ pub struct AzureStorageQueue {
 impl Publisher for AzureStorageQueue {
     type PubMessage = Message;
 
-    fn flow_action_map(&self) -> &HashMap<String, String> {
-        &self.message_flow_actions
-    }
     fn repr(&self) -> String {
         format!("{}/{}", &self.storage_account, &self.queue_name)
     }

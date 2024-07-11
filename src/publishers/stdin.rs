@@ -1,6 +1,5 @@
 
 use crate::interfaces::{Publisher, RawMessage};
-use std::collections::HashMap;
 use tokio::io::{self, AsyncBufReadExt, BufReader};
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
@@ -21,17 +20,12 @@ impl RawMessage for StdInMsg {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct StdInput {
-    message_flow_actions: HashMap<String, String>
-}
+pub struct StdInput ;
 
 #[async_trait]
 impl Publisher for StdInput {
     type PubMessage = StdInMsg;
 
-    fn flow_action_map(&self) ->  &HashMap<String,String> {
-        &self.message_flow_actions
-    }
     fn repr(&self) -> String {
         String::from("Stdin")
     }

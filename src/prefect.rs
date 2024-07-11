@@ -61,6 +61,8 @@ async fn get_deployment_id(
     Ok(deployment_id.to_string())
 }
 
+/// Gets a token for injection into the prefect API request headers from azure DefaultCredential
+/// or the PREFECT_API_KEY env var if present in that order.
 async fn get_token(settings_ptr: &Arc<config::Settings>) -> Result<Option<String>, Error> {
     let mut token: Option<String> = None;
 
@@ -86,8 +88,8 @@ pub async fn trigger_prefect_deployment(
     flow_parameters: &Option<serde_json::Value>,
     settings_ptr: &Arc<config::Settings>
 ) -> Result<String, Error> {
-    let prefect_uri = std::env::var("PREFECT_API_URI").expect(
-        "Env var PREFECT_API_URI is required for this application to run"
+    let prefect_uri = std::env::var("PREFECT_API_URL").expect(
+        "Env var PREFECT_API_URL is required for this application to run"
     );
     let token = get_token(settings_ptr).await?;
     let deployment_id = get_deployment_id(

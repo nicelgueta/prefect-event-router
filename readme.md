@@ -23,19 +23,10 @@ Here's an example:
             "publisher_type": "AzureStorageQueue",
             "storage_account": "storage-account-name",
             "queue_name": "test",
-            "message_flow_actions": {
-                // If the thread receives a JSON message with message-type="MyMessageType"
-                // it will kick-off the below prefect flow deployment
-                "MyMessageType": "Flow Name/deployment-name"
-            }
         },
         // From the bundled example:
         {
             "publisher_type": "StdInput",
-            "message_flow_actions": {
-                "SampleMsg": "Test Flow/integration-test",
-                "ParamsMsg": "Test Flow with params/integration-test"
-            }
         }
     ]
 }
@@ -68,11 +59,7 @@ The test json:
 {
     "threads": [
         {
-            "publisher_type": "StdInput",
-            "message_flow_actions": {
-                "SampleMsg": "Test Flow/integration-test",
-                "ParamsMsg": "Test Flow with params/integration-test"
-            }
+            "publisher_type": "StdInput"
         }
     ]
 }
@@ -81,12 +68,12 @@ You can see from this json that our handler will create one listener thread that
 
 Messages should be received in JSON format. For the first message, this is the expected input. paste this into the terminal and you should see the prefect flow in terminal 2, beginning to kick-off.
 ```json
-{"message_type": "SampleMsg"}
+{"flow_name": "Test Flow", "deployment_name": "integration-test"}
 ```
 
 Now try dropping in a message for the second flow that takes parameters. You should see the flow in prefect being executed with the payload provided:
 ```json
-{"message_type": "ParamsMsg", "payload": {"name": "Gordon Bennett"}}
+{"flow_name": "Test Flow with Params", "deployment_name": "integration-test", "payload": {"name": "Gordon Bennett"}}
 ```
 
 Simple!
@@ -100,7 +87,7 @@ Once finished, to clear out the example venv and config, just run `make reset-pr
 A few environment variables are required to get started.
 The first is the URI to your prefect instance. (If you're running this application on the same machine as your prefect server, this is commonly `http://127.0.0.1:4200/api`)
 ```bash
-export PREFECT_API_URI="https://your-prefect-server@example.com/api"
+export PREFECT_API_URL="https://your-prefect-server@example.com/api"
 ```
 
 ### Server Authentication

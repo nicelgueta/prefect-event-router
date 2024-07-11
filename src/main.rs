@@ -43,23 +43,15 @@ async fn thread_loop(
             }
         };
         // get the message type config
-        let message_type = q_message.typ();
-        let flow_dep_result = publisher.get_flow_deployment(&message_type);
-        let (flow_name, dep_name) = match flow_dep_result {
-            Ok(value) => value,
-            Err(inp_error) => {
-                println!("{}: {}", &loop_name, inp_error.to_string());
-                continue
-            }
-        };
+        let (flow_name, deployment_name) = q_message.get_flow_deployment();
         let flow_parameters = q_message.get_flow_parameters();
         // trigger prefect deployment
         let trigger_result = prefect::trigger_prefect_deployment(
-            &flow_name, &dep_name, flow_parameters, &settings_ptr
+            &flow_name, &deployment_name, flow_parameters, &settings_ptr
         ).await;
         match trigger_result {
             Ok(flow_run_name) => {
-                println!("{}: Successfully triggered {}/{}: {}", &loop_name, &flow_name, &dep_name, &flow_run_name);
+                println!("{}: Successfully triggered {}/{}: {}", &loop_name, &flow_name, &deployment_name, &flow_run_name);
                 if let Some(params) = flow_parameters {
                     println!("{}: with parameters {}", &loop_name, params)
                 }

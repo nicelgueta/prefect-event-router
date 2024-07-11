@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 #[cfg(feature = "azure_storage_queues")]
 mod azure_storage_queue;
 // #[cfg(feature = "zmq")]
-mod zeromq;
+// mod zeromq;
 
 mod stdin;
 
@@ -28,6 +28,23 @@ mod tests {
     use super::PublisherType;
     use serde_json::json;
 
+    #[test]
+    fn test_load_std_input(){
+        let json_v = json!(
+            {
+                "publisher_type": "StdInput",
+            }
+        );
+        let azure_publisher: PublisherType = serde_json::from_value(json_v).expect(
+            "Unable to parse json as a valid publisher type"
+        );
+        let _stdin = match azure_publisher {
+            PublisherType::StdInput(v) => v,
+            _ => panic!("Not expecting any other type other than AzureStorageQueue")
+        };
+
+    }
+
     #[cfg(feature = "azure_storage_queues")]
     #[test]
     fn test_load_azure_publisher_type(){
@@ -36,9 +53,6 @@ mod tests {
                 "publisher_type": "AzureStorageQueue",
                 "storage_account": "storage-account-name",
                 "queue_name": "test",
-                "message_flow_actions": {
-                    "MyMessageType": "Flow Name/deployment-name"
-                }
             }
         );
         let azure_publisher: PublisherType = serde_json::from_value(json_v).expect(
@@ -46,9 +60,8 @@ mod tests {
         );
         let _asq: AzureStorageQueue = match azure_publisher {
             PublisherType::AzureStorageQueue(v) => v,
-            PublisherType::StdInput(_v) => panic!("Not expecting stdinput type")
+            _ => panic!("Not expecting any other type other than AzureStorageQueue")
         };
 
-        
     }
 }

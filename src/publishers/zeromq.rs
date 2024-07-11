@@ -24,9 +24,6 @@ impl RawMessage for ZmqMsg {
 impl Publisher for Zmq {
     type PubMessage = ZmqMsg;
 
-    fn flow_action_map(&self) -> &HashMap<String, String> {
-        &self.message_flow_actions
-    }
     fn repr(&self) -> String {
         format!("ZMQ {}", self.tcp_uri)
     }
